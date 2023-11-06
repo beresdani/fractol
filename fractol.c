@@ -6,7 +6,7 @@
 /*   By: dberes <dberes@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/11/03 16:45:42 by dberes            #+#    #+#             */
-/*   Updated: 2023/11/06 19:29:05 by dberes           ###   ########.fr       */
+/*   Updated: 2023/11/06 20:16:20 by dberes           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,10 +86,10 @@ int check_complex(double x, double y)
 		z_real = z_real*z_real - z_imag*z_imag + x;
 		z_imag = 2*temp*z_imag + y;
 		if ( z_real*z_real + z_imag*z_imag >= 4)
-			return (k);
+			return (k + k*256 + k*256*256);
 		k++;
 	}
-	return (k);
+	return (k + k*256 + k*256*256);
 }
 
 int	render_mandelbrot(t_img *img)
@@ -121,6 +121,8 @@ int	handle_keypress(int keysym, t_data *data)
     return (0);
 }
 
+int	handle_mouse_zoom()
+
 int	render (t_data *data)
 {
 	if (data->win_ptr == NULL)
@@ -147,7 +149,8 @@ int main(void)
 	data.img.addr = mlx_get_data_addr(data.img.mlx_img, &data.img.bpp, &data.img.line_len, &data.img.endian);
 	mlx_loop_hook(data.mlx_ptr, &render, &data);
     mlx_hook(data.win_ptr, KeyPress, KeyPressMask, &handle_keypress, &data);
-    mlx_loop(data.mlx_ptr);
+    mlx_hook(data.win_ptr,  );
+	mlx_loop(data.mlx_ptr);
 	mlx_destroy_display(data.mlx_ptr);
 	free(data.mlx_ptr);
 }
