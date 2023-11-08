@@ -6,7 +6,7 @@
 /*   By: dberes <dberes@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/11/03 16:45:42 by dberes            #+#    #+#             */
-/*   Updated: 2023/11/06 20:16:20 by dberes           ###   ########.fr       */
+/*   Updated: 2023/11/08 15:20:04 by dberes           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,6 +39,7 @@ typedef struct s_data
 {
 	void	*mlx_ptr;
 	void	*win_ptr;
+    double  scale;
     t_img   img;
 }	t_data;
 
@@ -70,29 +71,32 @@ void img_pix_put(t_img *img, int x, int y, int color)
 }
 */
 
-int check_complex(double x, double y)
+int check_complex(double x, double y, t_data *data)
 {
 	int k;
-	double z_real;
-	double z_imag;
-	double temp;
+	double  z_real;
+	double  z_imag;
+	double  temp;
+    double  scale;
 
 	z_real = 0;
 	z_imag = 0;
 	k = 0;
+    scale = (data->scale);
 	while (k <256)
 	{
 		temp = z_real;
-		z_real = z_real*z_real - z_imag*z_imag + x;
-		z_imag = 2*temp*z_imag + y;
+        
+		z_real = (z_real*z_real - z_imag*z_imag + x)*scale;
+		z_imag = (2*temp*z_imag + y)*scale;
 		if ( z_real*z_real + z_imag*z_imag >= 4)
-			return (k + k*256 + k*256*256);
+			return (255-k);
 		k++;
 	}
-	return (k + k*256 + k*256*256);
+	return (170*256*256);
 }
 
-int	render_mandelbrot(t_img *img)
+int	render_mandelbrot(t_img *img, t_data *data)
 {
 	int x;
 	int y;
@@ -103,7 +107,7 @@ int	render_mandelbrot(t_img *img)
 		x = 0;
 		while (x < WINDOW_WIDTH)
 		{
-			img_pix_put(img, x, y, check_complex(x/250.0f -3, y/200.0f -2));
+			img_pix_put(img, x, y, check_complex(x/250.0f -3, y/200.0f -2, data));
 			x++;
 		}
 		y++;
@@ -121,13 +125,21 @@ int	handle_keypress(int keysym, t_data *data)
     return (0);
 }
 
-int	handle_mouse_zoom()
+
+int	handle_mouse_event(int button, int x, int y, t_data *data)
+{
+    data->scale = 1;
+    if(button == 4)
+        data->scale = data->scale *0.9;
+    return (0);
+}
+
 
 int	render (t_data *data)
 {
 	if (data->win_ptr == NULL)
         return (1);
-	render_mandelbrot(&data->img);
+	render_mandelbrot(&data->img, data);
 	mlx_put_image_to_window(data->mlx_ptr, data->win_ptr, data->img.mlx_img, 0, 0);
 	return (0);
 }
@@ -149,7 +161,7 @@ int main(void)
 	data.img.addr = mlx_get_data_addr(data.img.mlx_img, &data.img.bpp, &data.img.line_len, &data.img.endian);
 	mlx_loop_hook(data.mlx_ptr, &render, &data);
     mlx_hook(data.win_ptr, KeyPress, KeyPressMask, &handle_keypress, &data);
-    mlx_hook(data.win_ptr,  );
+    mlx_mouse_hook(data.win_ptr, &handle_mouse_event, &data);
 	mlx_loop(data.mlx_ptr);
 	mlx_destroy_display(data.mlx_ptr);
 	free(data.mlx_ptr);
