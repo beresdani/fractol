@@ -6,7 +6,7 @@
 /*   By: dberes <dberes@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/11/03 16:45:42 by dberes            #+#    #+#             */
-/*   Updated: 2023/11/08 15:20:04 by dberes           ###   ########.fr       */
+/*   Updated: 2023/11/09 16:14:08 by dberes           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,10 @@ typedef struct s_data
 	void	*mlx_ptr;
 	void	*win_ptr;
     double  scale;
+	double	x_move;
+	double	y_move;
+	double	x_dist;
+	double	y_dist;
     t_img   img;
 }	t_data;
 
@@ -77,20 +81,18 @@ int check_complex(double x, double y, t_data *data)
 	double  z_real;
 	double  z_imag;
 	double  temp;
-    double  scale;
 
 	z_real = 0;
 	z_imag = 0;
 	k = 0;
-    scale = (data->scale);
 	while (k <256)
 	{
 		temp = z_real;
         
-		z_real = (z_real*z_real - z_imag*z_imag + x)*scale;
-		z_imag = (2*temp*z_imag + y)*scale;
+		z_real = (z_real*z_real - z_imag*z_imag + x);
+		z_imag = (2*temp*z_imag + y);
 		if ( z_real*z_real + z_imag*z_imag >= 4)
-			return (255-k);
+			return ((0x00FFFFFF / 256) * k);
 		k++;
 	}
 	return (170*256*256);
@@ -100,14 +102,13 @@ int	render_mandelbrot(t_img *img, t_data *data)
 {
 	int x;
 	int y;
-
 	y = 0;
 	while (y < WINDOW_HEIGHT)
 	{
 		x = 0;
 		while (x < WINDOW_WIDTH)
 		{
-			img_pix_put(img, x, y, check_complex(x/250.0f -3, y/200.0f -2, data));
+			img_pix_put(img, x, y, check_complex((x/250.0f -2 + data->x_dist/2)*data->scale + data->x_move, (y/200.0f -2 + data->y_dist/2)*data->scale + data->y_move, data));
 			x++;
 		}
 		y++;
@@ -122,18 +123,40 @@ int	handle_keypress(int keysym, t_data *data)
 		mlx_destroy_window(data->mlx_ptr, data->win_ptr);
         data->win_ptr = NULL;
     }
+	else if (keysym == XK_Up)
+		data->y_move += 0.1*data->scale;
+	else if (keysym == XK_Down)
+		data->y_move -= 0.1*data->scale;
+	else if (keysym == XK_Left)
+		data->x_move += 0.1*data->scale;
+	else if (keysym == XK_Right)
+		data->x_move -= 0.1*data->scale;
     return (0);
 }
-
 
 int	handle_mouse_event(int button, int x, int y, t_data *data)
 {
-    data->scale = 1;
     if(button == 4)
-        data->scale = data->scale *0.9;
+	{
+        data->scale *= 0.95;
+		data->x_move += (x/WINDOW_WIDTH - 0.5)*0.1*data->scale;
+		data->y_move += (y/WINDOW_HEIGHT - 0.5)*0.1*data->scale;
+	}
+	else if (button == 5)
+	{
+		data->scale *= 1.05;
+		data->x_move -= (x/WINDOW_WIDTH - 0.5)*data->scale;
+		data->y_move -= (y/WINDOW_HEIGHT - 0.5)*data->scale;
+	}
     return (0);
 }
 
+int close_window(t_data *data)
+{
+	mlx_destroy_window(data->mlx_ptr, data->win_ptr);
+	data->win_ptr = NULL;
+	exit(0);
+}
 
 int	render (t_data *data)
 {
@@ -146,10 +169,15 @@ int	render (t_data *data)
 
 int main(void)
 {
-   t_data	data;
+    t_data	data;
 
+	data.scale = 1;
+	data.y_move = 0;
+	data.x_move = 0;
+	data.x_dist = 0;
+	data.y_dist = 0;
     data.mlx_ptr = mlx_init();
-	if (data.mlx_ptr == NULL)
+    if (data.mlx_ptr == NULL)
 		return (MLX_ERROR);
     data.win_ptr = mlx_new_window(data.mlx_ptr, WINDOW_WIDTH, WINDOW_HEIGHT, "trial 42");
 	if (data.win_ptr == NULL)
@@ -161,6 +189,7 @@ int main(void)
 	data.img.addr = mlx_get_data_addr(data.img.mlx_img, &data.img.bpp, &data.img.line_len, &data.img.endian);
 	mlx_loop_hook(data.mlx_ptr, &render, &data);
     mlx_hook(data.win_ptr, KeyPress, KeyPressMask, &handle_keypress, &data);
+	mlx_hook(data.win_ptr, DestroyNotify, NoEventMask, &close_window, &data);
     mlx_mouse_hook(data.win_ptr, &handle_mouse_event, &data);
 	mlx_loop(data.mlx_ptr);
 	mlx_destroy_display(data.mlx_ptr);
