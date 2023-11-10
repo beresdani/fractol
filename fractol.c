@@ -6,47 +6,11 @@
 /*   By: dberes <dberes@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/11/03 16:45:42 by dberes            #+#    #+#             */
-/*   Updated: 2023/11/09 16:14:08 by dberes           ###   ########.fr       */
+/*   Updated: 2023/11/10 16:13:22 by dberes           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <math.h>
-#include <complex.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <mlx.h>
-#include <X11/keysym.h>
-#include <X11/X.h>
-
-#define WINDOW_WIDTH 1000
-#define WINDOW_HEIGHT 800
-#define MLX_ERROR 1
-#define GREEN_PIXEL 0xFF00
-#define RED_PIXEL 0xFF0000
-#define WHITE_PIXEL 0xFFFFFF
-
-typedef struct s_img
-{
-    void    *mlx_img;
-    char    *addr;
-    int     bpp; /*bits per pixel*/
-    int     line_len;
-    int     endian;
-}   t_img;
-
-typedef struct s_data
-{
-	void	*mlx_ptr;
-	void	*win_ptr;
-    double  scale;
-	double	x_move;
-	double	y_move;
-	double	x_dist;
-	double	y_dist;
-    t_img   img;
-}	t_data;
-
+#include "fractol.h"
 
 void	img_pix_put(t_img *img, int x, int y, int color)
 {
@@ -74,6 +38,25 @@ void img_pix_put(t_img *img, int x, int y, int color)
     }
 }
 */
+int	ft_strncmp(const char *s1, const char *s2, size_t n)
+{
+	size_t			i;
+	unsigned char	*p1;
+	unsigned char	*p2;
+
+	i = 0;
+	p1 = (unsigned char *)s1;
+	p2 = (unsigned char *)s2;
+	while (i < n && (p1[i] != '\0' || p2[i] != '\0'))
+	{
+		if (p1[i] < p2[i])
+			return (-1);
+		else if (p1[i] > p2[i])
+			return (1);
+		i++;
+	}
+	return (0);
+}
 
 int check_complex(double x, double y, t_data *data)
 {
@@ -82,23 +65,35 @@ int check_complex(double x, double y, t_data *data)
 	double  z_imag;
 	double  temp;
 
-	z_real = 0;
-	z_imag = 0;
+	if (ft_strncmp(data->type, "Mandelbrot", 10) == 0)
+	{
+		data->c_x = x;
+		data->c_y = y;
+		z_real = 0;
+		z_imag = 0;
+	}
+	else if (ft_strncmp(data->type, "Julia", 5) == 0)
+	{
+		z_real = x;
+		z_imag = y;
+		data->c_x = -0.8;
+		data->c_y = 0.156;
+	}
 	k = 0;
-	while (k <256)
+	while (k <1000)
 	{
 		temp = z_real;
         
-		z_real = (z_real*z_real - z_imag*z_imag + x);
-		z_imag = (2*temp*z_imag + y);
+		z_real = (z_real*z_real - z_imag*z_imag + data->c_x);
+		z_imag = (2*temp*z_imag + data->c_y);
 		if ( z_real*z_real + z_imag*z_imag >= 4)
-			return ((0x00FFFFFF / 256) * k);
+			return ((0x00FFFFFF / 1000) * k);
 		k++;
 	}
 	return (170*256*256);
 }
 
-int	render_mandelbrot(t_img *img, t_data *data)
+int	render_fractal(t_img *img, t_data *data)
 {
 	int x;
 	int y;
@@ -108,7 +103,7 @@ int	render_mandelbrot(t_img *img, t_data *data)
 		x = 0;
 		while (x < WINDOW_WIDTH)
 		{
-			img_pix_put(img, x, y, check_complex((x/250.0f -2 + data->x_dist/2)*data->scale + data->x_move, (y/200.0f -2 + data->y_dist/2)*data->scale + data->y_move, data));
+			img_pix_put(img, x, y, check_complex((x/250.0f -2)*data->scale + data->x_move, (y/200.0f -2)*data->scale + data->y_move, data));
 			x++;
 		}
 		y++;
@@ -139,14 +134,14 @@ int	handle_mouse_event(int button, int x, int y, t_data *data)
     if(button == 4)
 	{
         data->scale *= 0.95;
-		data->x_move += (x/WINDOW_WIDTH - 0.5)*0.1*data->scale;
-		data->y_move += (y/WINDOW_HEIGHT - 0.5)*0.1*data->scale;
+		data->x_move += ((double)(x -WINDOW_WIDTH/2)/250.0f*0.1*data->scale);
+		data->y_move += ((double)(y -WINDOW_HEIGHT/2)/200.0f*0.1*data->scale);
 	}
 	else if (button == 5)
 	{
 		data->scale *= 1.05;
-		data->x_move -= (x/WINDOW_WIDTH - 0.5)*data->scale;
-		data->y_move -= (y/WINDOW_HEIGHT - 0.5)*data->scale;
+		data->x_move -= ((double)(x -WINDOW_WIDTH/2)/250.0f*0.1*data->scale);
+		data->y_move -= ((double)(y -WINDOW_HEIGHT/2)/200.0f*0.1*data->scale);
 	}
     return (0);
 }
@@ -162,20 +157,30 @@ int	render (t_data *data)
 {
 	if (data->win_ptr == NULL)
         return (1);
-	render_mandelbrot(&data->img, data);
+	
+	render_fractal(&data->img, data);
 	mlx_put_image_to_window(data->mlx_ptr, data->win_ptr, data->img.mlx_img, 0, 0);
 	return (0);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
+	(void) argc;
     t_data	data;
 
 	data.scale = 1;
 	data.y_move = 0;
 	data.x_move = 0;
-	data.x_dist = 0;
-	data.y_dist = 0;
+	if (ft_strncmp(argv[1], "Mandelbrot", 10) == 0)
+		data.type = "Mandelbrot";
+	else if (ft_strncmp(argv[1], "Julia", 5) == 0)
+		data.type = "Julia";
+	else
+	{
+		printf("%s\n", "Wrong input. Fractals to choose:\nMandelbrot\nJulia");
+		return (0);
+	}
+	
     data.mlx_ptr = mlx_init();
     if (data.mlx_ptr == NULL)
 		return (MLX_ERROR);
